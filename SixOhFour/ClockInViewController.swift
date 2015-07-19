@@ -77,6 +77,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
         workTimeLabel.text = "00:00:00"
         breakButton.enabled = false
         breakTitleLabel.text = " "
+        breakTitleLabel.hidden = true
         breakTimeLabel.text = " "
         editBreakInstruction.hidden = true
         editBreakButton.enabled = false
@@ -117,8 +118,11 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
                 jobColorDisplay.hidden = false
                 
                 jobListEmpty = false
-                startStopButton.enabled = true
                 jobTitleDisplayLabel.textColor = UIColor.blackColor()
+                
+                if timelogFlow == 0 {
+                    startStopButton.enabled = true
+                }
                 
             } else {
                 jobTitleDisplayLabel.text = "Add a Job"
@@ -139,6 +143,10 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             arrayOfJobs = results as! [Jobs]
             jobTitleDisplayLabel.text = arrayOfJobs[selectedJobIndex].jobName
             jobColorDisplay.color = arrayOfJobs[selectedJobIndex].getJobColor()
+        }
+        
+        if timelogFlow == 2 {
+            breakButton.setTitle("Save shift for \(jobTitleDisplayLabel.text!)", forState: UIControlState.Normal)
         }
 
     
@@ -176,9 +184,9 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             
             timer.invalidate()
             
-            startStopButton.setTitle("Done with Shift", forState: UIControlState.Normal)
+            startStopButton.setTitle("", forState: UIControlState.Normal)
             startStopButton.enabled = false
-            breakButton.setTitle("Reset", forState: UIControlState.Normal)
+            breakButton.setTitle("Save shift for \(jobTitleDisplayLabel.text!)", forState: UIControlState.Normal)
             
             timelogFlow = 2
 
@@ -269,15 +277,50 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             
             breakTimeLabel.text = "0\(breakHours):\(breakMinutes):0\(breakSeconds)"
             
-        //RESET
+        //RESET and SAVE (TIMELOGS UNDER 1 JOB NAME)
         } else {
             
             startStopButton.setTitle("Clock In", forState: UIControlState.Normal)
             breakButton.setTitle("Start Break", forState: UIControlState.Normal)
             breakButton.enabled = false
             
+            
+            
+            
+            
+            
+            
+//            //NEED TO FIND A WAY TO SAVE THE TIMESLOGS TO ONE SHIFT!
+//            let shiftEnt = NSEntityDescription.entityForName("Shifts", inManagedObjectContext: context)
+//            var newShift = Shifts(entity: shiftEnt!, insertIntoManagedObjectContext: context)
+//
+//            // Add multiple TIMELOGS to SHIFT
+//            newShift.setValue(NSSet setWithObject:TimeLogs, forKey: "Shifts")
+//            
+//            // Save Managed Object Context
+//            NSError *error = nil;
+//            if (![newPerson.managedObjectContext save:&error]) {
+//                NSLog(@"Unable to save managed object context.");
+//                NSLog(@"%@, %@", error, error.localizedDescription);
+//            }
+            
+
+            
+            
+            
+            
+            
+            
+//            newShift.setValue("" + timelogDescription.last!, forKey: "timelogTitle")
+            
+            
+            
+            
+            
+            
             //clears all the laps when clicked reset
             timelogTimestamp.removeAll(keepCapacity: false)
+            timelogDescription.removeAll(keepCapacity: false)
             lapsTableView.reloadData()
             
             minutes = 0
@@ -292,9 +335,6 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             breakTitleLabel.text = " "
 
             startStopButton.enabled = true
-
-            timelogTimestamp = []
-            timelogDescription = []
             
             timelogFlow = 0
         }
@@ -316,23 +356,28 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     
 //MARK: Functions
     
-    func allTimeLogsFetchRequest() -> NSFetchRequest {
-        
-        var fetchRequest = NSFetchRequest(entityName: "TimeLogs")
-        //let sortDescriptor = NSSortDescriptor(key: "name", ascending: true)
-        
-        fetchRequest.predicate = nil
-        //fetchRequest.sortDescriptors = [sortDescriptor]
-        //fetchRequest.fetchBatchSize = 20
-        
-        return fetchRequest
-    }
+//    func allTimeLogsFetchRequest() -> NSFetchRequest {
+//        
+//        var fetchRequest = NSFetchRequest(entityName: "TimeLogs")
+//        //let sortDescriptor = NSSortDescriptor(key: "name", ascending: true)
+//        
+//        fetchRequest.predicate = nil
+//        //fetchRequest.sortDescriptors = [sortDescriptor]
+//        //fetchRequest.fetchBatchSize = 20
+//        
+//        return fetchRequest
+//    }
     
     func TimeLogsFetchRequest() -> NSFetchRequest {
         let fetchRequest = NSFetchRequest(entityName: "TimeLogs")
         let sortDescriptor = NSSortDescriptor(key: "timelogTitle", ascending: true)
         fetchRequest.sortDescriptors = [sortDescriptor]
         return fetchRequest
+    }
+    
+    func getFetchedResultsController() -> NSFetchedResultsController {
+        frc = NSFetchedResultsController(fetchRequest: TimeLogsFetchRequest(), managedObjectContext: context, sectionNameKeyPath: nil, cacheName: nil)
+        return frc
     }
     
     func saveToCoreDate(){
@@ -344,7 +389,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
         
         newTimeLogs.setValue("" + timelogDescription.last!, forKey: "timelogTitle")
         newTimeLogs.setValue("" + timelogTimestamp.last!, forKey: "timelogTimestamp")
-        newTimeLogs.setValue("", forKey: "timelogJob")
+        newTimeLogs.setValue("placeholderShifts", forKey: "timelogJob")
         newTimeLogs.setValue("", forKey: "timelogComment")
         
         timelogsList.append(newTimeLogs)
@@ -353,12 +398,11 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
 
         println(newTimeLogs)
         
-        println(nItemClockIn)
-        
+        println(timelogDescription)
     }
     
     func appendToTimeTableView() {
-        var timeStampAll = NSDateFormatter.localizedStringFromDate(NSDate(), dateStyle: .ShortStyle, timeStyle: .MediumStyle)
+        var timeStampAll = NSDateFormatter.localizedStringFromDate(NSDate(), dateStyle: .MediumStyle, timeStyle: .MediumStyle)
         timelogTimestamp.append(timeStampAll)
         lapsTableView.reloadData()
     }
@@ -456,6 +500,8 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
         breakTitleLabel.text = "You are running over your breaktime"
         breakTimeLabel.textColor = UIColor.redColor()
         editBreakInstruction.textColor = UIColor.redColor()
+        editBreakButton.enabled = false
+        editBreakInstruction.hidden = true
         
         
         breakSeconds += 1
@@ -486,9 +532,11 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             breakTitleLabel.text = "Your break is set to \(breakMinutesSet) min"
         } else if breakMinutesSet == 0 && breakSecondsSet > 0 {
             breakTitleLabel.text = "Your break is set to \(breakSecondsSet) sec"
+        } else { //if breakMinutesSet == 0 && breakHoursSet == 0 {
+            breakTitleLabel.text = "Minimum breaktime is 1 min"
+            breakMinutesSet = 1
         }
     }
-
     
     func breakReset () {
         breakMinutes = breakMinutesSet
@@ -510,6 +558,8 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
         cell.textLabel!.text = timelogsList[timelogsList.count - indexPath.row - 1].timelogTitle
         cell.detailTextLabel?.text = timelogsList[timelogsList.count - indexPath.row - 1].timelogTimestamp //if you want acesending order [indexPath.row]
         
+        lapsTableView.reloadRowsAtIndexPaths([indexPath], withRowAnimation: UITableViewRowAnimation.Automatic)
+        
         return cell
         
     }
@@ -527,6 +577,22 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
         
     }
 
+    func tableView(tableView: UITableView, canEditRowAtIndexPath indexPath: NSIndexPath) -> Bool {
+        return true
+    }
+    
+    func tableView(tableView: UITableView, commitEditingStyle editingStyle: UITableViewCellEditingStyle, forRowAtIndexPath indexPath: NSIndexPath) {
+        
+        if (editingStyle == UITableViewCellEditingStyle.Delete) {
+            // handle delete (by removing the data from your array and updating the tableview)
+//            timelogsList.removeAtIndex(timelogsList.count - indexPath.row - 1)
+//            lapsTableView.reloadData()
+//            lapsTableView.deleteRowsAtIndexPaths([indexPath], withRowAnimation: UITableViewRowAnimation.Automatic)
+        }
+        
+        
+    }
+    
 
 // MARK: Segues
     
@@ -555,14 +621,14 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             destinationVC.breakHoursSetIntial = self.breakHoursSet
         }
         
-        //Send Core Data to Timelog Details
+        //Send Core Data to Timelog Details //place holder for JobName //waiting for shifts
         if segue.identifier == "showDetails" {
             
             let destinationVC = segue.destinationViewController as! detailsTimelogViewController
             destinationVC.hidesBottomBarWhenPushed = true;
-            
             destinationVC.nItem = self.nItemClockIn
-            
+            destinationVC.jobLabelDisplay = jobTitleDisplayLabel.text!
+            destinationVC.jobColorDisplayPassed = jobColorDisplay.color
         }
 
     }
