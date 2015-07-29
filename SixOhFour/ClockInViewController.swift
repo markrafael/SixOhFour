@@ -69,11 +69,6 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     
     let context : NSManagedObjectContext = (UIApplication.sharedApplication().delegate as! AppDelegate).managedObjectContext!
     
-    func getFetchedResultsController() -> NSFetchedResultsController {
-        frc = NSFetchedResultsController(fetchRequest: TimeLogsFetchRequest(), managedObjectContext: context, sectionNameKeyPath: nil, cacheName: nil)
-        return frc
-    }
-    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -95,6 +90,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     }
     
     override func viewDidAppear(animated: Bool) {
+        var jc = JobColor()
         super.viewDidAppear(true)
         
         if jobListEmpty {
@@ -119,7 +115,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
                 //Fetches the first jobs
                 var firstJob = results[0] as! Jobs
                 jobTitleDisplayLabel.text = firstJob.jobName
-                jobColorDisplay.color = firstJob.getJobColor()
+                jobColorDisplay.color = jc.getJobColor(firstJob.jobColor)
                 jobTitleDisplayLabel.textColor = UIColor.blackColor()
                 jobColorDisplay.hidden = false
                 
@@ -148,7 +144,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             var arrayOfJobs = [Jobs]()
             arrayOfJobs = results as! [Jobs]
             jobTitleDisplayLabel.text = arrayOfJobs[selectedJobIndex].jobName
-            jobColorDisplay.color = arrayOfJobs[selectedJobIndex].getJobColor()
+            jobColorDisplay.color = jc.getJobColor(arrayOfJobs[selectedJobIndex].jobColor)
         }
         
         if timelogFlow == 2 {
