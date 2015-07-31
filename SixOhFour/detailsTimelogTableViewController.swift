@@ -32,32 +32,33 @@ class detailsTimelogViewController: UITableViewController {
     
     let context = (UIApplication.sharedApplication().delegate as! AppDelegate).managedObjectContext
     
-    var nItem : TimeLogs! // will change from pushed data Segue
-    
-    var nItemPrevious : TimeLogs! // will change from pushed data Segue
-
-    var nItemNext : TimeLogs! // will change from pushed data Segue
+    var nItem : Timelog! // will change from pushed data Segue
+    var nItemPrevious : Timelog! // will change from pushed data Segue
+    var nItemNext : Timelog! // will change from pushed data Segue
 
     override func viewDidLoad() {
         super.viewDidLoad()
         
         jobColorDisplay.color = jobColorDisplayPassed
         jobLabel.text = jobLabelDisplay
-        entryLabel.text = nItem!.timelogTitle
-        timestampLabel.text = nItem!.timelogTimestamp
-        commentTextField.text = nItem!.timelogComment
+        entryLabel.text = nItem!.type
+        timestampLabel.text = "\(nItem!.time)"
+        commentTextField.text = nItem!.comment
 
         
         doneButton = UIBarButtonItem(title: "Done", style: .Plain, target: self, action: "doneSettingDetails")
         self.navigationItem.rightBarButtonItem = doneButton
 
+////////////////////////////////////////////////////////
+//        //Calculate Minimum date (convert String to NSDate)
+//        let entryDateString = nItem.timelogTimestamp
+//        let dateFormatterEntry = NSDateFormatter()
+//        dateFormatterEntry.dateFormat = "MMM dd, yyyy, hh:mm:ss aa"
+//        let entryDate = dateFormatterEntry.dateFromString(entryDateString)
+//        timestampPicker.date = entryDate!
+////////////////////////////////////////////////////////
         
-        //Calculate Minimum date (convert String to NSDate)
-        let entryDateString = nItem.timelogTimestamp
-        let dateFormatterEntry = NSDateFormatter()
-        dateFormatterEntry.dateFormat = "MMM dd, yyyy, hh:mm:ss aa"
-        let entryDate = dateFormatterEntry.dateFromString(entryDateString)
-        timestampPicker.date = entryDate!
+        timestampPicker.date = nItem.time
 
         datePickerChanged(timestampLabel!, datePicker: timestampPicker!)
         
@@ -66,13 +67,18 @@ class detailsTimelogViewController: UITableViewController {
             println("FIRST ENTRY CHOOSEN = no min date")
 
         } else {
-            //Calculate Minimum date (convert String to NSDate)
-            let minDateString = nItemPrevious.timelogTimestamp
-            let dateFormatterMin = NSDateFormatter()
-            dateFormatterMin.dateFormat = "MMM dd, yyyy, hh:mm:ss aa"
-            let minDate = dateFormatterMin.dateFromString(minDateString)
-            print("minDate = \(minDate)")
-            timestampPicker.minimumDate = minDate
+
+////////////////////////////////////////////////////////
+//            //Calculate Minimum date (convert String to NSDate)
+//            let minDateString = nItemPrevious.timelogTimestamp
+//            let dateFormatterMin = NSDateFormatter()
+//            dateFormatterMin.dateFormat = "MMM dd, yyyy, hh:mm:ss aa"
+//            let minDate = dateFormatterMin.dateFromString(minDateString)
+//            print("minDate = \(minDate)")
+//            timestampPicker.minimumDate = minDate
+////////////////////////////////////////////////////////
+            
+            timestampPicker.minimumDate = nItemPrevious.time
             println("timestampPicker.minimumDate \(timestampPicker.minimumDate!)")
         }
 
@@ -81,15 +87,18 @@ class detailsTimelogViewController: UITableViewController {
             timestampPicker.maximumDate = NSDate()
             println("LAST ENTRY CHOOSEN = NSDATE used")
         } else {
-            //Calculate Maximum date (convert String to NSDate)
 
-                println(nItemNext)
-            let maxDateString = nItemNext.timelogTimestamp
-            let dateFormatterMin = NSDateFormatter()
-            dateFormatterMin.dateFormat = "MMM dd, yyyy, hh:mm:ss aa"
-            let maxDate = dateFormatterMin.dateFromString(maxDateString)
-            print("maxDate = \(maxDate)")
-            timestampPicker.maximumDate = maxDate
+////////////////////////////////////////////////////////
+//            //Calculate Maximum date (convert String to NSDate)
+//            let maxDateString = nItemNext.timelogTimestamp
+//            let dateFormatterMin = NSDateFormatter()
+//            dateFormatterMin.dateFormat = "MMM dd, yyyy, hh:mm:ss aa"
+//            let maxDate = dateFormatterMin.dateFromString(maxDateString)
+//            print("maxDate = \(maxDate)")
+//            timestampPicker.maximumDate = maxDate
+////////////////////////////////////////////////////////
+            
+            timestampPicker.maximumDate = nItemNext.time
             println("timestampPicker.maximumDate \(timestampPicker.maximumDate!)")
         }
         
@@ -110,10 +119,10 @@ class detailsTimelogViewController: UITableViewController {
     }
     
     func editItem() {
-        nItem!.timelogJob = jobLabel.text!
-        nItem!.timelogTitle = entryLabel.text!
-        nItem!.timelogTimestamp = timestampLabel.text!
-        nItem!.timelogComment = commentTextField.text
+//        nItem!.timelogJob = jobLabel.text!
+        nItem!.type = entryLabel.text!
+//        nItem!.time = timestampLabel.text!
+        nItem!.comment = commentTextField.text
         println(nItem)
         context!.save(nil)
     }

@@ -13,9 +13,11 @@ class ClockInJobsPopoverViewController: UIViewController, UITableViewDataSource,
   
     @IBOutlet weak var ClockInJobsTable: UITableView!
     
-    var arrayOfJobs = [Jobs]()
+
+    var arrayOfJobs = [Job]()
+    var selectedJob: Job!
     var selectedJobIndex: Int!
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
   
@@ -24,13 +26,13 @@ class ClockInJobsPopoverViewController: UIViewController, UITableViewDataSource,
         var appDel:AppDelegate = (UIApplication.sharedApplication().delegate as! AppDelegate)
         var context:NSManagedObjectContext = appDel.managedObjectContext!
         
-        var request = NSFetchRequest(entityName: "Jobs")
+        var request = NSFetchRequest(entityName: "Job")
         request.returnsObjectsAsFaults = false ;
         
         var results:NSArray = context.executeFetchRequest(request, error: nil)!
         
-        arrayOfJobs = results as! [Jobs]
-    
+        arrayOfJobs = results as! [Job]
+        
         ClockInJobsTable.delegate = self
         ClockInJobsTable.dataSource = self
         

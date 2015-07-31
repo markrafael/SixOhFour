@@ -58,12 +58,12 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     var noMinDate: Bool = false
     var noMaxDate: Bool = false
 
-    var nItemClockIn : TimeLogs!
-    var nItemClockInPrevious : TimeLogs!
-    var nItemClockInNext : TimeLogs!
+    var nItemClockIn : Timelog!
+    var nItemClockInPrevious : Timelog!
+    var nItemClockInNext : Timelog!
 
     
-    var timelogsList = [TimeLogs]()
+    var timelogsList = [Timelog]()
     
     var frc : NSFetchedResultsController = NSFetchedResultsController()
     
@@ -106,16 +106,16 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             var appDel:AppDelegate = (UIApplication.sharedApplication().delegate as! AppDelegate)
             var context:NSManagedObjectContext = appDel.managedObjectContext!
             
-            var request = NSFetchRequest(entityName: "Jobs")
+            var request = NSFetchRequest(entityName: "Job")
             request.returnsObjectsAsFaults = false ;
             
             var results:NSArray = context.executeFetchRequest(request, error: nil)!
             
             if results.count > 0 {
                 //Fetches the first jobs
-                var firstJob = results[0] as! Jobs
-                jobTitleDisplayLabel.text = firstJob.jobName
-                jobColorDisplay.color = jc.getJobColor(firstJob.jobColor)
+                var firstJob = results[0] as! Job
+                jobTitleDisplayLabel.text = firstJob.company.name
+                jobColorDisplay.color = jc.getJobColor(firstJob.color.name)
                 jobTitleDisplayLabel.textColor = UIColor.blackColor()
                 jobColorDisplay.hidden = false
                 
@@ -136,15 +136,15 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             var appDel:AppDelegate = (UIApplication.sharedApplication().delegate as! AppDelegate)
             var context:NSManagedObjectContext = appDel.managedObjectContext!
             
-            var request = NSFetchRequest(entityName: "Jobs")
+            var request = NSFetchRequest(entityName: "Job")
             request.returnsObjectsAsFaults = false ;
             
             var results:NSArray = context.executeFetchRequest(request, error: nil)!
         
-            var arrayOfJobs = [Jobs]()
-            arrayOfJobs = results as! [Jobs]
-            jobTitleDisplayLabel.text = arrayOfJobs[selectedJobIndex].jobName
-            jobColorDisplay.color = jc.getJobColor(arrayOfJobs[selectedJobIndex].jobColor)
+            var arrayOfJobs = [Job]()
+            arrayOfJobs = results as! [Job]
+            jobTitleDisplayLabel.text = arrayOfJobs[selectedJobIndex].company.name
+            jobColorDisplay.color = jc.getJobColor(arrayOfJobs[selectedJobIndex].color.name)
         }
         
         if timelogFlow == 2 {
@@ -293,28 +293,11 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             
             
             
-//            //NEED TO FIND A WAY TO SAVE THE TIMESLOGS TO ONE SHIFT!
-//            let shiftEnt = NSEntityDescription.entityForName("Shifts", inManagedObjectContext: context)
-//            var newShift = Shifts(entity: shiftEnt!, insertIntoManagedObjectContext: context)
-//
-//            // Add multiple TIMELOGS to SHIFT
-//            newShift.setValue(NSSet setWithObject:TimeLogs, forKey: "Shifts")
-//            
-//            // Save Managed Object Context
-//            NSError *error = nil;
-//            if (![newPerson.managedObjectContext save:&error]) {
-//                NSLog(@"Unable to save managed object context.");
-//                NSLog(@"%@, %@", error, error.localizedDescription);
-//            }
             
+//            //NEED TO FIND A WAY TO SAVE THE TIMESLOGS TO ONE SHIFT
 
             
             
-            
-            
-            
-            
-//            newShift.setValue("" + timelogDescription.last!, forKey: "timelogTitle")
             
             
             
@@ -361,21 +344,10 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     
 //MARK: Functions
     
-//    func allTimeLogsFetchRequest() -> NSFetchRequest {
-//        
-//        var fetchRequest = NSFetchRequest(entityName: "TimeLogs")
-//        //let sortDescriptor = NSSortDescriptor(key: "name", ascending: true)
-//        
-//        fetchRequest.predicate = nil
-//        //fetchRequest.sortDescriptors = [sortDescriptor]
-//        //fetchRequest.fetchBatchSize = 20
-//        
-//        return fetchRequest
-//    }
     
     func TimeLogsFetchRequest() -> NSFetchRequest {
-        let fetchRequest = NSFetchRequest(entityName: "TimeLogs")
-        let sortDescriptor = NSSortDescriptor(key: "timelogTitle", ascending: true)
+        let fetchRequest = NSFetchRequest(entityName: "Timelog")
+        let sortDescriptor = NSSortDescriptor(key: "type", ascending: true)
         fetchRequest.sortDescriptors = [sortDescriptor]
         return fetchRequest
     }
@@ -389,13 +361,16 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
         var appDel:AppDelegate = (UIApplication.sharedApplication().delegate as! AppDelegate)
         var context:NSManagedObjectContext = appDel.managedObjectContext!
         
-        let ent = NSEntityDescription.entityForName("TimeLogs", inManagedObjectContext: context)
-        var newTimeLogs = TimeLogs(entity: ent!, insertIntoManagedObjectContext: context)
+        let ent = NSEntityDescription.entityForName("Timelog", inManagedObjectContext: context)
+        var newTimeLogs = Timelog(entity: ent!, insertIntoManagedObjectContext: context)
         
-        newTimeLogs.setValue("" + timelogDescription.last!, forKey: "timelogTitle")
-        newTimeLogs.setValue("" + timelogTimestamp.last!, forKey: "timelogTimestamp")
-        newTimeLogs.setValue("placeholderShifts", forKey: "timelogJob")
-        newTimeLogs.setValue("", forKey: "timelogComment")
+        newTimeLogs.setValue("" + timelogDescription.last!, forKey: "type")
+
+//        newTimeLogs.setValue("" + timelogTimestamp.last!, forKey: "time")
+        newTimeLogs.setValue( NSDate() , forKey: "time")
+        
+//        newTimeLogs.setValue("placeholderShifts", forKey: "timelogJob")
+        newTimeLogs.setValue("", forKey: "comment")
         
         timelogsList.append(newTimeLogs)
         
@@ -519,6 +494,16 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
         if breakSeconds == 60 {
             breakMinutes += 1
             breakSeconds = 0
+
+//=======
+//        if((sourceVC.selectedJob) != nil ) {
+//            
+//            jobTitleDisplayLabel.text = sourceVC.selectedJob.company.name
+//            
+//            var jc = JobColor()
+//            
+//            jobColorDisplay.color = jc.getJobColor(sourceVC.selectedJob.color.name)
+//>>>>>>> 983424342b42cbd3981ce731b942dfecddef490e
         }
         
         if breakMinutes == 60 {
@@ -565,8 +550,8 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
         cell.textLabel!.font = UIFont.systemFontOfSize(12.0)
         cell.detailTextLabel!.font = UIFont.systemFontOfSize(12.0)
 
-        cell.textLabel!.text = timelogsList[indexPath.row].timelogTitle //
-        cell.detailTextLabel?.text = timelogsList[indexPath.row].timelogTimestamp //if you want decesending order [timelogsList.count - indexPath.row - 1]
+        cell.textLabel!.text = timelogsList[indexPath.row].type
+        cell.detailTextLabel!.text = NSDateFormatter.localizedStringFromDate( (timelogsList[indexPath.row].time) , dateStyle: .MediumStyle, timeStyle: .MediumStyle)
         
         return cell
         
