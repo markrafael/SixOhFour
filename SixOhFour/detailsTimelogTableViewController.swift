@@ -8,6 +8,7 @@
 
 import UIKit
 import CoreData
+import Foundation
 
 class detailsTimelogViewController: UITableViewController {
 
@@ -41,9 +42,10 @@ class detailsTimelogViewController: UITableViewController {
         
         jobColorDisplay.color = jobColorDisplayPassed
         jobLabel.text = jobLabelDisplay
-        entryLabel.text = nItem!.type
-        timestampLabel.text = "\(nItem!.time)"
-        commentTextField.text = nItem!.comment
+        entryLabel.text = nItem.type
+        timestampLabel.text = "\(nItem.time)"
+        commentTextField.text = nItem.comment
+        minTimeLabel.hidden = true
 
         
         doneButton = UIBarButtonItem(title: "Done", style: .Plain, target: self, action: "doneSettingDetails")
@@ -65,6 +67,7 @@ class detailsTimelogViewController: UITableViewController {
         if noMinDate == true {
             //No Minimum Data
             println("FIRST ENTRY CHOOSEN = no min date")
+            minTimeLabel.text = ""
 
         } else {
 
@@ -79,13 +82,15 @@ class detailsTimelogViewController: UITableViewController {
 ////////////////////////////////////////////////////////
             
             timestampPicker.minimumDate = nItemPrevious.time
+            minTimeLabel.text = "\(nItemPrevious.type): \(dateFormatter(nItemPrevious.time))"
             println("timestampPicker.minimumDate \(timestampPicker.minimumDate!)")
         }
 
         if noMaxDate == true {
             //No NextTimeStamp for Maxium Data
             timestampPicker.maximumDate = NSDate()
-            println("LAST ENTRY CHOOSEN = NSDATE used")
+            maxTimeLabel.text = "Cannot select a future time."
+            
         } else {
 
 ////////////////////////////////////////////////////////
@@ -100,6 +105,8 @@ class detailsTimelogViewController: UITableViewController {
             
             timestampPicker.maximumDate = nItemNext.time
             println("timestampPicker.maximumDate \(timestampPicker.maximumDate!)")
+            maxTimeLabel.text = "\(nItemNext.type): \(dateFormatter(nItemNext.time))"
+
         }
         
         
@@ -110,21 +117,50 @@ class detailsTimelogViewController: UITableViewController {
     }
     
     @IBAction func timestampChanged(sender: AnyObject) {
+        
         datePickerChanged(timestampLabel!, datePicker: timestampPicker!)
+        
+        if noMinDate {
+            //need to add code that prevents the user from selecting a date that exceeds theyre previous shift
+        } else {
+            if (timestampPicker.date.compare(timestampPicker.minimumDate!)) == NSComparisonResult.OrderedAscending {
+                minTimeLabel.hidden = false
+                timestampLabel.text = "\(dateFormatter(timestampPicker.minimumDate!))"
+            }
+        }
+
+        
+        if noMaxDate == true {
+            if timestampPicker.date.timeIntervalSinceNow > -120 {
+                maxTimeLabel.hidden = false
+            }
+        } else {
+            if timestampPicker.date.timeIntervalSinceDate(timestampPicker.maximumDate!) > -60 {
+                maxTimeLabel.hidden = false
+            }
+        }
+        
     }
-    
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
     }
     
     func editItem() {
-//        nItem!.timelogJob = jobLabel.text!
-        nItem!.type = entryLabel.text!
-//        nItem!.time = timestampLabel.text!
-        nItem!.comment = commentTextField.text
+        
+        nItem.type = entryLabel.text!
+        nItem.time = timestampPicker.date
+        nItem.comment = commentTextField.text
         println(nItem)
         context!.save(nil)
+        
+    
+        if noMinDate == false && (timestampPicker.date.compare(timestampPicker.minimumDate!)) == NSComparisonResult.OrderedAscending {
+            nItem.time = timestampPicker.minimumDate!
+        } else {
+            nItem.time = timestampPicker.date
+        }
+        
     }
     
     func doneSettingDetails () {
@@ -143,8 +179,8 @@ func datePickerChanged(label: UILabel, datePicker: UIDatePicker) {
     
     label.text = dateFormatter.stringFromDate(datePicker.date)
 
-    
 
+    
 }
 
 
@@ -160,7 +196,6 @@ override func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPat
         }
         
     } else {
-        println(indexPath.row)
         hideTimePicker(true)
         hideTimePicker = true
     }
@@ -187,13 +222,19 @@ override func tableView(tableView: UITableView, heightForRowAtIndexPath indexPat
             hideTimePicker = true
         } else {
             timestampPicker.hidden = false
-            minTimeLabel.hidden = false
-            maxTimeLabel.hidden = false
+//            minTimeLabel.hidden = false
+//            maxTimeLabel.hidden = false
             hideTimePicker = false
         }
         
         tableView.beginUpdates()
         tableView.endUpdates()
+    }
+    
+    func dateFormatter (timestamp: NSDate) -> String {
+        //from NSDate to regualer
+        let dateString = NSDateFormatter.localizedStringFromDate( timestamp , dateStyle: .MediumStyle, timeStyle: .MediumStyle)
+        return dateString
     }
     
 }
