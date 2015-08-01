@@ -47,9 +47,6 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     var stopWatchString: String = ""
     var breakWatchString: String = ""
     
-    var timelogTimestamp: [String] = []
-    var timelogDescription: [String] = []
-    
     var timelogFlow: Int = 0
     var breakCount: Int = 0
     
@@ -64,6 +61,8 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
 
     
     var timelogsList = [Timelog]()
+    var timelogTimestamp: [String] = []
+    var timelogDescription: [String] = []
     
     var frc : NSFetchedResultsController = NSFetchedResultsController()
     
@@ -103,8 +102,8 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
         //SELECTS THE FIRST JOB WHEN APP IS LOADED
         if selectedJobIndex == -1 {
             // Fetch jobs list to keep refreshing changes
-            var appDel:AppDelegate = (UIApplication.sharedApplication().delegate as! AppDelegate)
-            var context:NSManagedObjectContext = appDel.managedObjectContext!
+            //var appDel:AppDelegate = (UIApplication.sharedApplication().delegate as! AppDelegate)
+            //var context:NSManagedObjectContext = appDel.managedObjectContext!
             
             var request = NSFetchRequest(entityName: "Job")
             request.returnsObjectsAsFaults = false ;
@@ -133,8 +132,8 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             }
             
         } else {
-            var appDel:AppDelegate = (UIApplication.sharedApplication().delegate as! AppDelegate)
-            var context:NSManagedObjectContext = appDel.managedObjectContext!
+            //var appDel:AppDelegate = (UIApplication.sharedApplication().delegate as! AppDelegate)
+            //var context:NSManagedObjectContext = appDel.managedObjectContext!
             
             var request = NSFetchRequest(entityName: "Job")
             request.returnsObjectsAsFaults = false ;
@@ -184,13 +183,13 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             timelogDescription.append("Clocked Out")
             appendToTimeTableView()
             saveToCoreDate()
-            
+            saveTimelogsToWorkedShift()
             timer.invalidate()
             
             startStopButton.setTitle("", forState: UIControlState.Normal)
             startStopButton.enabled = false
             breakButton.setTitle("Save shift for \(jobTitleDisplayLabel.text!)", forState: UIControlState.Normal)
-            
+
             timelogFlow = 2
 
         }
@@ -287,22 +286,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             breakButton.setTitle("Start Break", forState: UIControlState.Normal)
             breakButton.enabled = false
             
-            
-            
-            
-            
-            
-            
-            
-//            //NEED TO FIND A WAY TO SAVE THE TIMESLOGS TO ONE SHIFT
-
-            
-            
-            
-            
-            
-            
-            
+            saveWorkedShifttoJob()
             
             //clears all the laps when clicked reset
             timelogTimestamp.removeAll(keepCapacity: false)
@@ -358,28 +342,42 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     }
     
     func saveToCoreDate(){
-        var appDel:AppDelegate = (UIApplication.sharedApplication().delegate as! AppDelegate)
-        var context:NSManagedObjectContext = appDel.managedObjectContext!
+        //var appDel:AppDelegate = (UIApplication.sharedApplication().delegate as! AppDelegate)
+        //var context:NSManagedObjectContext = appDel.managedObjectContext!
         
         let ent = NSEntityDescription.entityForName("Timelog", inManagedObjectContext: context)
-        var newTimeLogs = Timelog(entity: ent!, insertIntoManagedObjectContext: context)
+        var newTimelog = Timelog(entity: ent!, insertIntoManagedObjectContext: context)
         
-        newTimeLogs.setValue("" + timelogDescription.last!, forKey: "type")
-
-//        newTimeLogs.setValue("" + timelogTimestamp.last!, forKey: "time")
-        newTimeLogs.setValue( NSDate() , forKey: "time")
+        newTimelog.setValue("" + timelogDescription.last!, forKey: "type")
+        newTimelog.time = NSDate()
+        newTimelog.setValue("", forKey: "comment")
         
-//        newTimeLogs.setValue("placeholderShifts", forKey: "timelogJob")
-        newTimeLogs.setValue("", forKey: "comment")
-        
-        timelogsList.append(newTimeLogs)
+        timelogsList.append(newTimelog)
         
         context.save(nil)
 
-        println(newTimeLogs)
+        println(newTimelog)
         
         println(timelogDescription)
     }
+    
+    func saveTimelogsToWorkedShift() {
+        
+        let workedShiftEnt = NSEntityDescription.entityForName("WorkedShift", inManagedObjectContext: context)
+        var newWorkedShift = Timelog(entity: workedShiftEnt!, insertIntoManagedObjectContext: context)
+        
+        var set = NSSet(array: timelogsList)
+        
+        newWorkedShift.setValue(set, forKey: "timelogs")
+        
+        println(newWorkedShift)
+        
+    }
+
+    func saveWorkedShifttoJob() {
+        
+    }
+
     
     func appendToTimeTableView() {
         var timeStampAll = NSDateFormatter.localizedStringFromDate(NSDate(), dateStyle: .MediumStyle, timeStyle: .MediumStyle)
@@ -559,6 +557,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     
     func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return timelogTimestamp.count
+//        return timelogsList.count //CRASHES CODE - NEEDS TO REDUCE THE NUMBER OF UNCESSARY VARIABLES
     }
     
     func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
