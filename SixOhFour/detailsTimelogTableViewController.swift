@@ -44,9 +44,9 @@ class detailsTimelogViewController: UITableViewController {
         jobLabel.text = jobLabelDisplay
         entryLabel.text = nItem.type
         timestampLabel.text = "\(nItem.time)"
-        commentTextField.text = nItem.comment
         minTimeLabel.hidden = true
-
+        commentTextField.text = nItem.comment
+        
         
         doneButton = UIBarButtonItem(title: "Done", style: .Plain, target: self, action: "doneSettingDetails")
         self.navigationItem.rightBarButtonItem = doneButton
@@ -120,10 +120,10 @@ class detailsTimelogViewController: UITableViewController {
         
         datePickerChanged(timestampLabel!, datePicker: timestampPicker!)
         
-        if noMinDate {
+        if noMinDate == true {
             //need to add code that prevents the user from selecting a date that exceeds theyre previous shift
         } else {
-            if (timestampPicker.date.compare(timestampPicker.minimumDate!)) == NSComparisonResult.OrderedAscending {
+            if (timestampPicker.date.compare(timestampPicker.minimumDate!)) == NSComparisonResult.OrderedAscending || timestampPicker.date == timestampPicker.minimumDate {
                 minTimeLabel.hidden = false
                 timestampLabel.text = "\(dateFormatter(timestampPicker.minimumDate!))"
             }
