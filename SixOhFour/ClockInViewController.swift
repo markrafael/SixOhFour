@@ -173,7 +173,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             
             timelogDescription.append("Clocked In")
             appendToTimeTableView()
-            saveToCoreDate()
+            saveToCoreData()
   
             timelogFlow = 1
         } else {
@@ -182,7 +182,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             workTitleLabel.text = "Total time you've worked"
             timelogDescription.append("Clocked Out")
             appendToTimeTableView()
-            saveToCoreDate()
+            saveToCoreData()
             saveTimelogsToWorkedShift()
             timer.invalidate()
             
@@ -241,7 +241,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             }
             
             appendToTimeTableView()
-            saveToCoreDate()
+            saveToCoreData()
 
             timelogFlow = 3
 
@@ -273,7 +273,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             }
     
             appendToTimeTableView()
-            saveToCoreDate()
+            saveToCoreData()
             
             timelogFlow = 1
             
@@ -341,7 +341,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
         return frc
     }
     
-    func saveToCoreDate(){
+    func saveToCoreData(){
         //var appDel:AppDelegate = (UIApplication.sharedApplication().delegate as! AppDelegate)
         //var context:NSManagedObjectContext = appDel.managedObjectContext!
         
@@ -364,7 +364,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     func saveTimelogsToWorkedShift() {
         
         let workedShiftEnt = NSEntityDescription.entityForName("WorkedShift", inManagedObjectContext: context)
-        var newWorkedShift = Timelog(entity: workedShiftEnt!, insertIntoManagedObjectContext: context)
+        var newWorkedShift = WorkedShift(entity: workedShiftEnt!, insertIntoManagedObjectContext: context)
         
         var set = NSSet(array: timelogsList)
         
