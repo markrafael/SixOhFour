@@ -26,8 +26,6 @@ class SetBreakTimeViewController: UIViewController, UIPickerViewDataSource, UIPi
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        // Do any additional setup after loading the view.
         
         self.SetBreakTimePicker.dataSource = self
         self.SetBreakTimePicker.delegate = self
@@ -41,7 +39,6 @@ class SetBreakTimeViewController: UIViewController, UIPickerViewDataSource, UIPi
         doneButton = UIBarButtonItem(title: "Done", style: .Plain, target: self, action: "doneSettingBreak")
         self.navigationItem.rightBarButtonItem = doneButton
         
-        
     }
 
     
@@ -54,17 +51,7 @@ class SetBreakTimeViewController: UIViewController, UIPickerViewDataSource, UIPi
         self.performSegueWithIdentifier("unwindFromSetBreakTimeViewController", sender: self)
     }
 
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
-        // Get the new view controller using segue.destinationViewController.
-        // Pass the selected object to the new view controller.
-    }
-    */
-
-    // MARK: - Set Break Time Picker
+// MARK: - Set Break Time Picker
     
     func numberOfComponentsInPickerView(pickerView: UIPickerView) -> Int {
         return 3
@@ -106,14 +93,4 @@ class SetBreakTimeViewController: UIViewController, UIPickerViewDataSource, UIPi
         }
     }
     
-//    override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
-//        println("This happened")
-//        if segue.identifier == "unwindFromSetBreakTimeViewController" {
-//            let destinationVC = segue.destinationViewController as! ClockInViewController
-//            
-//            //Passes 2 data variables
-//            destinationVC.breakMinutes = self.breakMinutes
-//            destinationVC.breakHours = self.breakHours
-//        }
-//    }
 }

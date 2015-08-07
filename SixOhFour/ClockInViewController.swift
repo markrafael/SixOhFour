@@ -80,7 +80,6 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        // Do any additional setup after loading the view, typically from a nib.
         self.lapsTableView.rowHeight = 30.0
         workTitleLabel.text = " "
         workTimeLabel.text = "00:00:00"
@@ -362,8 +361,6 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     }
     
     func saveToCoreData(){
-        //var appDel:AppDelegate = (UIApplication.sharedApplication().delegate as! AppDelegate)
-        //var context:NSManagedObjectContext = appDel.managedObjectContext!
         
         let ent = NSEntityDescription.entityForName("Timelog", inManagedObjectContext: context)
         newTimelog = Timelog(entity: ent!, insertIntoManagedObjectContext: context)
@@ -422,7 +419,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
 
     
     func appendToTimeTableView() {
-//        var timeStampAll = NSDateFormatter.localizedStringFromDate(NSDate(), dateStyle: .MediumStyle, timeStyle: .MediumStyle)
+
         timelogTimestamp.append(NSDate())
         lapsTableView.reloadData()
         
@@ -678,9 +675,6 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     func tableView(tableView: UITableView, canEditRowAtIndexPath indexPath: NSIndexPath) -> Bool {
         return true
     }
-    
-
-    
 
 // MARK: Segues (Show)
     
@@ -783,8 +777,6 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
         
         timelogTimestamp[selectedRowIndex] = sourceVC.nItem.time
     }
-
-// Extra: 
     
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()

@@ -50,15 +50,6 @@ class detailsTimelogViewController: UITableViewController {
         
         doneButton = UIBarButtonItem(title: "Done", style: .Plain, target: self, action: "doneSettingDetails")
         self.navigationItem.rightBarButtonItem = doneButton
-
-////////////////////////////////////////////////////////
-//        //Calculate Minimum date (convert String to NSDate)
-//        let entryDateString = nItem.timelogTimestamp
-//        let dateFormatterEntry = NSDateFormatter()
-//        dateFormatterEntry.dateFormat = "MMM dd, yyyy, hh:mm:ss aa"
-//        let entryDate = dateFormatterEntry.dateFromString(entryDateString)
-//        timestampPicker.date = entryDate!
-////////////////////////////////////////////////////////
         
         timestampPicker.date = nItem.time
 
@@ -200,8 +191,6 @@ override func tableView(tableView: UITableView, heightForRowAtIndexPath indexPat
             hideTimePicker = true
         } else {
             timestampPicker.hidden = false
-//            minTimeLabel.hidden = false
-//            maxTimeLabel.hidden = false
             hideTimePicker = false
         }
         
