@@ -20,9 +20,7 @@ class ClockInJobsPopoverViewController: UIViewController, UITableViewDataSource,
 
     override func viewDidLoad() {
         super.viewDidLoad()
-  
-        println("You're here in the ClockInJobsPopoverViewController")
-        
+          
         var appDel:AppDelegate = (UIApplication.sharedApplication().delegate as! AppDelegate)
         var context:NSManagedObjectContext = appDel.managedObjectContext!
         

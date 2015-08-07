@@ -11,6 +11,7 @@ import CoreData
 
 class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UIPopoverPresentationControllerDelegate, NSFetchedResultsControllerDelegate {
     
+    @IBOutlet weak var saveOption: UILabel!
     @IBOutlet weak var workTitleLabel: UILabel!
     @IBOutlet weak var workTimeLabel: UILabel!
     @IBOutlet weak var breakTitleLabel: UILabel!
@@ -26,10 +27,8 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     @IBOutlet weak var editBreakButton: UIButton!
     
     var timer = NSTimer()
-    var minutes: Int = 0
-    var seconds: Int = 0
-    var hours: Int = 0
     
+
     var breakTimer = NSTimer()
     var breakMinutes: Int = 0
     var breakSeconds: Int = 0
@@ -44,14 +43,15 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
 
     var breakTimerOver = NSTimer()
     
-    var stopWatchString: String = ""
+
+    var workedTimeString: String = ""
     var breakWatchString: String = ""
     
-    var timelogFlow: Int = 0
+    var flow: String = "Idle"
     var breakCount: Int = 0
     
     var jobListEmpty = true
-    var selectedJobIndex: Int = -1
+    var selectedJobIndex: Int = 0
     var noMinDate: Bool = false
     var noMaxDate: Bool = false
 
@@ -59,13 +59,22 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     var nItemClockInPrevious : Timelog!
     var nItemClockInNext : Timelog!
 
-    
+    var newTimelog : Timelog!
     var timelogsList = [Timelog]()
-    var timelogTimestamp: [String] = []
+    var timelogTimestamp: [NSDate] = []
     var timelogDescription: [String] = []
     
-    var frc : NSFetchedResultsController = NSFetchedResultsController()
+    var totalBreaktime : Double = 0.0
+    var selectedRowIndex: Int = -1
+    var elapsedTime : Int = 0
+    var duration : Double = 0.0
+
+    var currentWorkedShift : WorkedShift!
     
+    var jc = JobColor()
+
+    
+    var frc : NSFetchedResultsController = NSFetchedResultsController()
     let context : NSManagedObjectContext = (UIApplication.sharedApplication().delegate as! AppDelegate).managedObjectContext!
     
     override func viewDidLoad() {
@@ -76,11 +85,13 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
         workTitleLabel.text = " "
         workTimeLabel.text = "00:00:00"
         breakButton.enabled = false
-        breakTitleLabel.text = " "
         breakTitleLabel.hidden = true
-        breakTimeLabel.text = " "
+        breakTimeLabel.hidden = true
         editBreakInstruction.hidden = true
         editBreakButton.enabled = false
+        saveOption.hidden = true
+        saveOption.textColor = UIColor.blueColor()
+        
         
         frc = getFetchedResultsController()
         frc.delegate = self
@@ -89,7 +100,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     }
     
     override func viewDidAppear(animated: Bool) {
-        var jc = JobColor()
+        
         super.viewDidAppear(true)
         
         if jobListEmpty {
@@ -97,14 +108,11 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             workTimeLabel.textColor = UIColor.grayColor()
         }
         
-        displayBreaktime ()
         
         //SELECTS THE FIRST JOB WHEN APP IS LOADED
-        if selectedJobIndex == -1 {
-            // Fetch jobs list to keep refreshing changes
-            //var appDel:AppDelegate = (UIApplication.sharedApplication().delegate as! AppDelegate)
-            //var context:NSManagedObjectContext = appDel.managedObjectContext!
+        if selectedJobIndex == 0 {
             
+            // Fetch jobs list to keep refreshing changes
             var request = NSFetchRequest(entityName: "Job")
             request.returnsObjectsAsFaults = false ;
             
@@ -114,14 +122,15 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
                 //Fetches the first jobs
                 var firstJob = results[0] as! Job
                 jobTitleDisplayLabel.text = firstJob.company.name
-                jobColorDisplay.color = jc.getJobColor(firstJob.color.name)
+
                 jobTitleDisplayLabel.textColor = UIColor.blackColor()
                 jobColorDisplay.hidden = false
+                jobColorDisplay.color = jc.getJobColor(firstJob.color.name)
+                jobColorDisplay.setNeedsDisplay()
                 
                 jobListEmpty = false
-                jobTitleDisplayLabel.textColor = UIColor.blackColor()
                 
-                if timelogFlow == 0 {
+                if flow == "Idle" {
                     startStopButton.enabled = true
                 }
                 
@@ -132,9 +141,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             }
             
         } else {
-            //var appDel:AppDelegate = (UIApplication.sharedApplication().delegate as! AppDelegate)
-            //var context:NSManagedObjectContext = appDel.managedObjectContext!
-            
+
             var request = NSFetchRequest(entityName: "Job")
             request.returnsObjectsAsFaults = false ;
             
@@ -144,11 +151,22 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             arrayOfJobs = results as! [Job]
             jobTitleDisplayLabel.text = arrayOfJobs[selectedJobIndex].company.name
             jobColorDisplay.color = jc.getJobColor(arrayOfJobs[selectedJobIndex].color.name)
+            jobColorDisplay.setNeedsDisplay()
+
         }
         
-        if timelogFlow == 2 {
-            breakButton.setTitle("Save shift for \(jobTitleDisplayLabel.text!)", forState: UIControlState.Normal)
+        if flow == "clockedOut" {
+            breakButton.setTitle("Save to \(jobTitleDisplayLabel.text!)", forState: UIControlState.Normal)
+
+            sumUpBreaks(flow)
+            sumUpWorkDuration()
+            saveDurationToWorkedShift()
+        } else if flow == "onBreak" {
+            //while your on break you can see the duration adjustments
+            sumUpBreaks(flow)
+            sumUpWorkDuration()
         }
+
 
         lapsTableView.reloadData()
     
@@ -159,12 +177,11 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
 
     @IBAction func startStop(sender: AnyObject) {
         
-        //CLOCK IN
-        
-        //Begin Shift
-        if timelogFlow == 0 {
+        //CLOCK IN -- Begin  the shift
+        if flow == "Idle" {
+            flow = "onTheClock"
+
             workTitleLabel.text = "Time you've worked"
-            timer = NSTimer.scheduledTimerWithTimeInterval(1, target: self, selector: Selector("runWorkTimer"), userInfo: nil, repeats: true)
             
             startStopButton.setTitle("Clock Out", forState: UIControlState.Normal)
             breakButton.setTitle("Start Break", forState: UIControlState.Normal)
@@ -174,11 +191,14 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             timelogDescription.append("Clocked In")
             appendToTimeTableView()
             saveToCoreData()
-  
-            timelogFlow = 1
-        } else {
             
-        //CLOCK OUT
+            timer = NSTimer.scheduledTimerWithTimeInterval(1, target: self, selector: Selector("runAndUpdateWorkTimer"), userInfo: nil, repeats: true)
+            
+            
+        } else if flow == "onTheClock" {
+            //CLOCK OUT
+            flow = "clockedOut"
+
             workTitleLabel.text = "Total time you've worked"
             timelogDescription.append("Clocked Out")
             appendToTimeTableView()
@@ -188,10 +208,14 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             
             startStopButton.setTitle("", forState: UIControlState.Normal)
             startStopButton.enabled = false
-            breakButton.setTitle("Save shift for \(jobTitleDisplayLabel.text!)", forState: UIControlState.Normal)
+            breakButton.setTitle("Save to \(jobTitleDisplayLabel.text!)", forState: UIControlState.Normal)
+            
+            saveOption.hidden = false
 
-            timelogFlow = 2
-
+            sumUpBreaks(flow)
+            sumUpWorkDuration()
+            saveDurationToWorkedShift()
+            
         }
         
     }
@@ -202,7 +226,8 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     @IBAction func lapReset(sender: AnyObject) {
     
         //STARTED BREAK
-        if timelogFlow == 1 {
+        if flow == "onTheClock" {
+            flow = "onBreak"
             
             breakTimeLabel.hidden = false
             breakTitleLabel.hidden = false
@@ -211,14 +236,8 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
 
             breakReset ()
 
-            //Display Break time instantly
-            let secondsStringBreak = breakSeconds > 9 ? "\(breakSeconds)" : "0\(breakSeconds)"
-            let minutesStringBreak = breakMinutes > 9 ? "\(breakMinutes)" : "0\(breakMinutes)"
-            let hoursStringBreak = breakHours > 9 ? "\(breakHours)" : "0\(breakHours)"
-            breakWatchString  = "\(hoursStringBreak):\(minutesStringBreak):\(secondsStringBreak)"
-            breakTimeLabel.text = breakWatchString
+
             
-            breakCount++
             
             displayBreaktime ()
 
@@ -227,14 +246,15 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             breakTimeLabel.textColor = UIColor.blueColor()
             editBreakInstruction.textColor = UIColor.blueColor()
             
-            timer.invalidate()
             
             breakTimer = NSTimer.scheduledTimerWithTimeInterval(1, target: self, selector: Selector("runBreakTimer"), userInfo: nil, repeats: true)
-            
+
+            timer.invalidate()
+
             startStopButton.enabled = false
             breakButton.setTitle("End Break", forState: UIControlState.Normal)
             
-            if breakCount == 1 {
+            if breakCount < 2 {
             timelogDescription.append("Started Break")
             } else {
             timelogDescription.append("Started Break #\(breakCount)")
@@ -243,14 +263,14 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             appendToTimeTableView()
             saveToCoreData()
 
-            timelogFlow = 3
-
+            breakCount++
             
         //ENDED BREAK
-        } else if timelogFlow == 3 {
+        } else if flow == "onBreak" {
+            flow = "onTheClock"
             
             breakTimerOver.invalidate()
-            
+
             breakTimeLabel.hidden = true
             breakTitleLabel.hidden = true
             editBreakInstruction.hidden = true
@@ -260,8 +280,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             
             breakTimer.invalidate()
             
-            timer = NSTimer.scheduledTimerWithTimeInterval(1, target: self, selector: Selector("runWorkTimer"), userInfo: nil, repeats: true)
-
+            timer = NSTimer.scheduledTimerWithTimeInterval(1, target: self, selector: Selector("runAndUpdateWorkTimer"), userInfo: nil, repeats: true)
             
             startStopButton.enabled = true
             breakButton.setTitle("Start Break", forState: UIControlState.Normal)
@@ -274,19 +293,18 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     
             appendToTimeTableView()
             saveToCoreData()
-            
-            timelogFlow = 1
+            sumUpBreaks(flow)
             
             breakTimeLabel.text = "0\(breakHours):\(breakMinutes):0\(breakSeconds)"
             
-        //RESET and SAVE (TIMELOGS UNDER 1 JOB NAME)
-        } else {
-            
+        //RESET and SAVE (WorkedShift to current JOB that is picked)
+        } else if flow == "clockedOut" {
+
             startStopButton.setTitle("Clock In", forState: UIControlState.Normal)
             breakButton.setTitle("Start Break", forState: UIControlState.Normal)
             breakButton.enabled = false
             
-            saveWorkedShifttoJob()
+            saveWorkedShiftToJob()
             
             //clears all the laps when clicked reset
             timelogTimestamp.removeAll(keepCapacity: false)
@@ -295,10 +313,6 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             
             lapsTableView.reloadData()
             
-            minutes = 0
-            seconds = 0
-            hours = 0
-            
             breakCount = 0
 
             workTitleLabel.text = " "
@@ -306,9 +320,15 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             breakTimeLabel.text = " "
             breakTitleLabel.text = " "
 
+            duration = 0
+            totalBreaktime = 0
+            
             startStopButton.enabled = true
             
-            timelogFlow = 0
+            saveOption.hidden = true
+            
+            //Wait to reset to idle - this is bc viewdidappear for duration calc.
+            flow = "Idle"
         }
         
         
@@ -346,7 +366,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
         //var context:NSManagedObjectContext = appDel.managedObjectContext!
         
         let ent = NSEntityDescription.entityForName("Timelog", inManagedObjectContext: context)
-        var newTimelog = Timelog(entity: ent!, insertIntoManagedObjectContext: context)
+        newTimelog = Timelog(entity: ent!, insertIntoManagedObjectContext: context)
         
         newTimelog.setValue("" + timelogDescription.last!, forKey: "type")
         newTimelog.time = NSDate()
@@ -364,24 +384,46 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     func saveTimelogsToWorkedShift() {
         
         let workedShiftEnt = NSEntityDescription.entityForName("WorkedShift", inManagedObjectContext: context)
-        var newWorkedShift = WorkedShift(entity: workedShiftEnt!, insertIntoManagedObjectContext: context)
+        currentWorkedShift = WorkedShift(entity: workedShiftEnt!, insertIntoManagedObjectContext: context)
         
         var set = NSSet(array: timelogsList)
         
-        newWorkedShift.setValue(set, forKey: "timelogs")
+        currentWorkedShift.setValue(set, forKey: "timelogs")
         
-        println(newWorkedShift)
+        println(currentWorkedShift)
         
     }
 
-    func saveWorkedShifttoJob() {
+    func saveDurationToWorkedShift() {
         
+        currentWorkedShift.setValue(duration, forKey: "duration")
+        println(currentWorkedShift)
+
+    }
+    
+    func saveWorkedShiftToJob() {
+        
+        var request = NSFetchRequest(entityName: "Job")
+        request.returnsObjectsAsFaults = false ;
+        
+        var selectedJob = jobTitleDisplayLabel.text
+        var predicateJob = NSPredicate(format: "company.name == %@" , selectedJob!)
+        
+        request.predicate = predicateJob
+        
+        var results:NSArray = context.executeFetchRequest(request, error: nil)!
+        
+        var arrayOfJobs = [Job]()
+        arrayOfJobs = results as! [Job]
+
+        currentWorkedShift.job = arrayOfJobs[0]
+
     }
 
     
     func appendToTimeTableView() {
-        var timeStampAll = NSDateFormatter.localizedStringFromDate(NSDate(), dateStyle: .MediumStyle, timeStyle: .MediumStyle)
-        timelogTimestamp.append(timeStampAll)
+//        var timeStampAll = NSDateFormatter.localizedStringFromDate(NSDate(), dateStyle: .MediumStyle, timeStyle: .MediumStyle)
+        timelogTimestamp.append(NSDate())
         lapsTableView.reloadData()
         
         var indexPathScroll = NSIndexPath(forRow: timelogsList.count, inSection: 0)
@@ -389,16 +431,95 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
         
     }
 
+//DURATION FUNCTIONS!!!!!!!
+    
+    func runAndUpdateWorkTimer() {
+        runWorkTimer()
+        updateWorkTimerLabel()
+    }
+    
+    func runWorkTimer() {
+        //currently calculated since clock in and subtracting the total breaktime duration
+        let elapsedTimeInterval = NSDate().timeIntervalSinceDate(timelogTimestamp[0])
+        
+        elapsedTime = Int(elapsedTimeInterval) - Int(totalBreaktime)
+    }
+    
+    func updateWorkTimerLabel() {
+        
+        var elapsedSecond :Int = 0
+        var elapsedMinute :Int = 0
+        var elapsedHour :Int = 0
+        
+        if elapsedTime >= 3600 {
+            elapsedSecond = (elapsedTime % 60 ) % 60
+            elapsedMinute = (elapsedTime % 3600 ) / 60
+            elapsedHour = elapsedTime / 60 / 60
+        } else if elapsedTime >= 60 {
+            elapsedSecond = elapsedTime % 60
+            elapsedMinute = elapsedTime / 60
+            elapsedHour = 0
+        } else {
+            elapsedSecond = elapsedTime
+            elapsedMinute = 0
+            elapsedHour = 0
+        }
+        
+        let secondsString = elapsedSecond > 9 ? "\(elapsedSecond)" : "0\(elapsedSecond)"
+        let minutesString = elapsedMinute > 9 ? "\(elapsedMinute)" : "0\(elapsedMinute)"
+        let hoursString = elapsedHour > 9 ? "\(elapsedHour)" : "0\(elapsedHour)"
+        
+        workedTimeString  = "\(hoursString):\(minutesString):\(secondsString)"
+        workTimeLabel.text = workedTimeString
+    }
+    
+    func sumUpBreaks(flow : String) {
+        
+        var subtractor: Int!
+        
+        if flow == "onBreak" {
+            subtractor = 1
+        } else {
+            subtractor = 0
+        }
+        
+        if breakCount > 0 {
+            
+            var breakCountdown = (breakCount-subtractor) * 2
+            var tempTotalBreaktime : Double = 0
+            var partialBreaktime: Double = 0
+            
+            if breakCount-subtractor >= 1 {
+            
+                for i in 1...(breakCount-subtractor) {
+                partialBreaktime = timelogTimestamp[breakCountdown].timeIntervalSinceDate(timelogTimestamp[breakCountdown-1])
+                tempTotalBreaktime = tempTotalBreaktime + partialBreaktime
+                breakCountdown = breakCountdown - 2
+                }
+            
+            }
+            totalBreaktime = tempTotalBreaktime
+        }
+    }
+    
+    func sumUpWorkDuration() {
+        
+            let totalShiftTimeInterval = (timelogTimestamp.last)!.timeIntervalSinceDate(timelogTimestamp[0])
+            duration = (totalShiftTimeInterval) - (totalBreaktime)
+            elapsedTime = Int(duration)
+            updateWorkTimerLabel()
+        
+    }
     
     func runBreakTimer() {
-
+      
         let secondsStringBreak = breakSeconds > 9 ? "\(breakSeconds)" : "0\(breakSeconds)"
         let minutesStringBreak = breakMinutes > 9 ? "\(breakMinutes)" : "0\(breakMinutes)"
         let hoursStringBreak = breakHours > 9 ? "\(breakHours)" : "0\(breakHours)"
-    
+        
         breakWatchString  = "\(hoursStringBreak):\(minutesStringBreak):\(secondsStringBreak)"
         breakTimeLabel.text = breakWatchString
-
+        
         if breakSeconds > 0 {
             breakSeconds--
         } else if breakSeconds == 0 && breakMinutes > 0 {
@@ -409,73 +530,13 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             breakMinutes = 59
         } else {
             
-            //Notifications outside the App (Home screen and Lock Screen)
-            var localNotification: UILocalNotification = UILocalNotification()
-            localNotification.alertAction = "PUCHIE"
-            localNotification.alertBody = "Your breaktime is over!"
-            localNotification.soundName = UILocalNotificationDefaultSoundName
-            localNotification.fireDate = NSDate(timeIntervalSinceNow: 1) //seconds from now
-            UIApplication.sharedApplication().scheduleLocalNotification(localNotification)
-            
-            //Notifications insdie the App (Home screen and Lock Screen)
-            let alert = UIAlertController(title: "Breaktime is over!",
-                message: "Please choose from the following:",
-                preferredStyle: UIAlertControllerStyle.Alert)
-            
-            alert.addAction(UIAlertAction(title: "View", style: .Default, handler: nil))
-            alert.addAction(UIAlertAction(title: "Clock In", style: .Default, handler: {
-                action in self.lapReset(true)
-            }))
-            alert.addAction(UIAlertAction(title: "Add 5 Minutes", style: .Default, handler: { action in
-                
-                self.breakTimerOver.invalidate()
-                self.breakMinutes = 5
-                self.breakSeconds = 0
-                self.breakHours = 0
-                self.breakTimeLabel.textColor = UIColor.blueColor()
-                self.editBreakInstruction.hidden = true
-                self.editBreakButton.enabled = false
-                self.breakTitleLabel.textColor = UIColor.blueColor()
-                self.breakTitleLabel.text = "You've extended your break by 5 minutes"
-                self.breakTimer = NSTimer.scheduledTimerWithTimeInterval(1, target: self, selector: Selector("runBreakTimer"), userInfo: nil, repeats: true)
-
-            }))
-            
-//??????????????? I dont know what this code was used for.
-//          presentViewController(alert, animated: true, completion:nil)
-//????????????????
-            
+            notifyBreakOver ()
             breakTimer.invalidate()
-            
             breakTimerOver = NSTimer.scheduledTimerWithTimeInterval(1, target: self, selector: Selector("runBreakTimerOver"), userInfo: nil, repeats: true)
             
         }
     }
     
-    //redundant code - need to combine both timers
-    func runWorkTimer() {
-        
-        seconds += 1
-        
-        if seconds == 60 {
-            minutes += 1
-            seconds = 0
-        }
-        
-        if minutes == 60 {
-            hours += 1
-            minutes = 0
-        }
-        
-        let secondsString = seconds > 9 ? "\(seconds)" : "0\(seconds)"
-        let minutesString = minutes > 9 ? "\(minutes)" : "0\(minutes)"
-        let hoursString = hours > 9 ? "\(hours)" : "0\(hours)"
-        
-        stopWatchString  = "\(hoursString):\(minutesString):\(secondsString)"
-        workTimeLabel.text = stopWatchString
-        
-    }
-
     //redundant code - need to combine both timers
     func runBreakTimerOver() {
         
@@ -492,16 +553,6 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
         if breakSeconds == 60 {
             breakMinutes += 1
             breakSeconds = 0
-
-//=======
-//        if((sourceVC.selectedJob) != nil ) {
-//            
-//            jobTitleDisplayLabel.text = sourceVC.selectedJob.company.name
-//            
-//            var jc = JobColor()
-//            
-//            jobColorDisplay.color = jc.getJobColor(sourceVC.selectedJob.color.name)
-//>>>>>>> 983424342b42cbd3981ce731b942dfecddef490e
         }
         
         if breakMinutes == 60 {
@@ -519,15 +570,21 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     }
     
     func displayBreaktime () {
+        
+        //Display Break time instantly
+        let secondsStringBreak = breakSeconds > 9 ? "\(breakSeconds)" : "0\(breakSeconds)"
+        let minutesStringBreak = breakMinutes > 9 ? "\(breakMinutes)" : "0\(breakMinutes)"
+        let hoursStringBreak = breakHours > 9 ? "\(breakHours)" : "0\(breakHours)"
+        breakWatchString  = "\(hoursStringBreak):\(minutesStringBreak):\(secondsStringBreak)"
+        breakTimeLabel.text = breakWatchString
+        
+        
         if breakHoursSet > 0 {
             breakTitleLabel.text = "Your break is set to \(breakHoursSet) hr and \(breakMinutesSet) min"
         } else if breakHoursSet == 0 && breakMinutesSet > 0 {
             breakTitleLabel.text = "Your break is set to \(breakMinutesSet) min"
         } else if breakMinutesSet == 0 && breakSecondsSet > 0 {
             breakTitleLabel.text = "Your break is set to \(breakSecondsSet) sec"
-        } else { //if breakMinutesSet == 0 && breakHoursSet == 0 {
-            breakTitleLabel.text = "Minimum breaktime is 1 min"
-            breakMinutesSet = 1
         }
     }
     
@@ -535,6 +592,41 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
         breakMinutes = breakMinutesSet
         breakSeconds = breakSecondsSet
         breakHours = breakHoursSet
+    }
+    
+    func notifyBreakOver() {
+        //Notifications outside the App (Home screen and Lock Screen)
+        var localNotification: UILocalNotification = UILocalNotification()
+        localNotification.alertAction = "PUCHIE"
+        localNotification.alertBody = "Your breaktime is over!"
+        localNotification.soundName = UILocalNotificationDefaultSoundName
+        localNotification.fireDate = NSDate(timeIntervalSinceNow: 1) //seconds from now
+        UIApplication.sharedApplication().scheduleLocalNotification(localNotification)
+        
+        //Notifications insdie the App (Home screen and Lock Screen)
+        let alert: UIAlertController = UIAlertController(title: "Breaktime is over!",
+            message: "Please choose from the following:",
+            preferredStyle: .Alert)
+        
+        alert.addAction(UIAlertAction(title: "View", style: .Default, handler: nil))
+        alert.addAction(UIAlertAction(title: "Clock In", style: .Default, handler: {
+            action in self.lapReset(true)
+        }))
+        alert.addAction(UIAlertAction(title: "Add 5 Minutes", style: .Default, handler: { action in
+            
+            self.breakTimerOver.invalidate()
+            self.breakMinutes = 5
+            self.breakSeconds = 0
+            self.breakHours = 0
+            self.breakTimeLabel.textColor = UIColor.blueColor()
+            self.editBreakInstruction.hidden = true
+            self.editBreakButton.enabled = false
+            self.breakTitleLabel.textColor = UIColor.blueColor()
+            self.breakTitleLabel.text = "You've extended your break by 5 minutes"
+            self.breakTimer = NSTimer.scheduledTimerWithTimeInterval(1, target: self, selector: Selector("runBreakTimer"), userInfo: nil, repeats: true)
+            
+        }))
+        self.presentViewController(alert, animated: true, completion: nil)
     }
     
 // MARK: Table View functions
@@ -557,12 +649,13 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
     
     func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return timelogTimestamp.count
-//        return timelogsList.count //CRASHES CODE - NEEDS TO REDUCE THE NUMBER OF UNCESSARY VARIABLES
     }
+    
     
     func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
 
         self.nItemClockIn = timelogsList[indexPath.row] // send up actual
+        selectedRowIndex = indexPath.row
         
         if (indexPath.row) == 0 {
             noMinDate = true // user select CLOCKIN so noMinDate
@@ -578,54 +671,25 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             self.nItemClockInNext = timelogsList[indexPath.row + 1]
         }
         
-////////////////////////////////////////////////////////////
-//      DESCENDING ORDER
-//        self.nItemClockIn = timelogsList[timelogsList.count - indexPath.row - 1] // send up actual
-//
-//        if (timelogsList.count - indexPath.row - 1) == 0 {
-//            noMinDate = true // user select CLOCKIN so noMinDate
-//        } else {
-//            noMinDate = false
-//            self.nItemClockInPrevious = timelogsList[timelogsList.count - indexPath.row - 2]
-//        }
-//        
-//        if indexPath.row == 0 {
-//            noMaxDate = true //user select last TIMELOD so noMaxDat is sent, and will use NSDATE instead
-//        } else {
-//            noMaxDate = false
-//            self.nItemClockInNext = timelogsList[timelogsList.count - indexPath.row]
-//        }
-        
-        println("!!!!!!!!!IN CLOCKIN timelogsList.count = \(timelogsList.count) and indexPath.row = \((indexPath.row))!!!!!!!!!!")
-
         self.performSegueWithIdentifier("showDetails", sender: tableView.cellForRowAtIndexPath(indexPath))
-        
+
     }
 
     func tableView(tableView: UITableView, canEditRowAtIndexPath indexPath: NSIndexPath) -> Bool {
         return true
     }
     
-//    func tableView(tableView: UITableView, commitEditingStyle editingStyle: UITableViewCellEditingStyle, forRowAtIndexPath indexPath: NSIndexPath) {
-//        
-//        if (editingStyle == UITableViewCellEditingStyle.Delete) {
-//            // handle delete (by removing the data from your array and updating the tableview)
-////            timelogsList.removeAtIndex(timelogsList.count - indexPath.row - 1)
-////            lapsTableView.reloadData()
-////            lapsTableView.deleteRowsAtIndexPaths([indexPath], withRowAnimation: UITableViewRowAnimation.Automatic)
-//        }
-//        
-//        
-//    }
+
     
 
-// MARK: Segues
+// MARK: Segues (Show)
     
     override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?)
     {
 
         //Select a Job
         if segue.identifier == "displayJobsList" {
+            
             let destinationVC = segue.destinationViewController as! ClockInJobsPopoverViewController
             destinationVC.navigationItem.title = ""
             destinationVC.hidesBottomBarWhenPushed = true;
@@ -646,7 +710,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             destinationVC.breakHoursSetIntial = self.breakHoursSet
         }
         
-        //Send Core Data to Timelog Details //place holder for JobName //waiting for shifts
+        //Send Core Data to Timelog Details
         if segue.identifier == "showDetails" {
             
             let destinationVC = segue.destinationViewController as! detailsTimelogViewController
@@ -656,15 +720,13 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
             destinationVC.nItemPrevious = self.nItemClockInPrevious
             destinationVC.nItemNext = self.nItemClockInNext
             destinationVC.jobLabelDisplay = jobTitleDisplayLabel.text!
-            destinationVC.jobColorDisplayPassed = jobColorDisplay.color
             destinationVC.noMinDate = self.noMinDate
             destinationVC.noMaxDate = self.noMaxDate
-
         }
 
     }
 
-// MARK: Segues.Unwind = Getting data from sourceVC
+// MARK: Segues (Unwind) = Getting data from sourceVC
     
     @IBAction func unwindFromClockInPopoverViewControllerAction (segue: UIStoryboardSegue) {
         let sourceVC = segue.sourceViewController as! ClockInJobsPopoverViewController
@@ -691,6 +753,7 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
                 breakMinutes = breakMinutes - 59
             }
             
+         
         }
         
         if((sourceVC.breakMinutes) >= 0 ) {
@@ -709,12 +772,16 @@ class ClockInViewController: UIViewController, UITableViewDelegate, UITableViewD
                 }
             }
         }
+        
+        displayBreaktime ()
+
     }
     
     @IBAction func unwindFromDetailsTimelogViewController (segue: UIStoryboardSegue) {
         
         let sourceVC = segue.sourceViewController as! detailsTimelogViewController
         
+        timelogTimestamp[selectedRowIndex] = sourceVC.nItem.time
     }
 
 // Extra: 

@@ -95,15 +95,13 @@ class SetBreakTimeViewController: UIViewController, UIPickerViewDataSource, UIPi
     func pickerView(pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
         if component == 0 {
             breakHours = row
-            println("breakMinutesSet changed to \(breakMinutes)")
         } else if component == 1 {
             breakMinutes = row
             
             if breakMinutes == 0 && breakHours == 0 {
                 breakMinutes = 1
-                println("Minimum 1 min break")
+                SetBreakTimePicker.selectRow(1, inComponent: 1, animated: true)
             } else {
-            println("breakMinutesSet changed to \(breakMinutes)")
             }
         }
     }
